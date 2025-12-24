@@ -1,0 +1,23 @@
+{% extends "layout.html" %}
+{% block content %}
+<h3>Songs</h3>
+<!--{% for entry in entries %}
+    <div class=entry>
+        <h4>{{ entry.title }}</h4>
+        <p><strong>Genre:</strong> {{ entry.genre }} | <strong>Performer:</strong> {{ entry.performer }}</p>
+        <p><strong>Writer:</strong> {{ entry.writer }} | <strong>Release Date:</strong> {{ entry.release_date }}</p>
+        <p><strong>Rating:</strong> {{ entry.rating }}</p>
+        <p><strong>Lyrics:</strong><br>{{ entry.lyrics }}</p>
+        <p><strong>URL:</strong> <a href="{{ entry.url }}" target="_blank">{{ entry.url }}</a></p>
+    </div>
+    <hr>
+{% endfor %}-->
+{% for entry in entries %}
+    <p class=entry>
+        <strong>{{ entry.title }}</strong> by {{ entry.performer }}
+        <br>Written by {{ entry.writer }}<br>
+        <br>Genre: {{ entry.genre }} | Released: {{ entry.release_date }}<br>
+        {{ entry.lyrics }}
+    </p>
+{% endfor %}
+{% endblock %}

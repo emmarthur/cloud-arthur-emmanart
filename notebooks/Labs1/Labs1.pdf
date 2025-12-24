@@ -1,0 +1,25 @@
+LAB 1.2
+ip address of remote host: 131.252.208.103/24
+hardware address of remote host: 52:54:00:13:a0:c6
+ip address of default router(0.0.0.0/0): 131.252.208.1
+default router hardware address: 00:00:5e:00:01:01
+default router name: router.seas.pdx.edu
+number of entries in the ARP table: 24
+ip addresses that have the same hardware address: 
+mirrors.cat.pdx.edu (131.252.208.20) at 52:54:00:5f:45:5f [ether] on enp1s0
+simirror.cat.pdx.edu (131.252.208.121) at 52:54:00:5f:45:5f [ether] on enp1s0
+how many less hardware addresses are there than IP addresses in the ARP table? : 3
+command for getting all ip address from arp table and putting them in the arp_entries file: arp -an | awk -F ' ' '{print $2}' > arp_entries
+network prefix that most ip address in arp_entries file use: 131.252.208 
+vm ip address: 10.138.0.2
+vm hardware address: 42:01:0a:8a:00:02
+default router's ip address for vm: 10.138.0.1
+default router's hardware address for vm: 42:01:0a:8a:00:0
+
+
+LAB 1.3
+How many subnetworks are created initially on the default network? How many regions does this correspond to?: The number of subnetworks is 43 and the number of regions it corresponds to is 43
+Given the CIDR prefix associated with each subnetwork, how many hosts does each subnetwork support? Each subnetwork in the list is /20 so it would be 2**32 - 2**20
+Regional instances used: europe-north1-a and asia-east1-a
+Which CIDR subnetworks are these instances brought up in? Do they correspond to the appropriate region based on the prior commands? : Each instance lines up with the /20 subnet for each region
+From the figure in the previous step. What facilitates this connectivity: the virtual switch or the VPN Gateway? it is a virtual switch both the source and destination IPs are internal IPs that belong to the same default VPC network (10.0.0.0/8 range).

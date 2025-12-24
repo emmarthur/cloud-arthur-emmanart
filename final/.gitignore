@@ -1,0 +1,53 @@
+# Server test files
+server/test_cloud_run.py
+server/test_server.py
+server/test_server_http.py
+server/test_server_simple.py
+server/test_cloud_run_results.txt
+
+# Client test files
+client/test_client.py
+client/test_project_description.txt
+
+# Server documentation and scripts (except rebuild_and_deploy.sh)
+server/deployment.txt
+server/grant_bigquery_roles.sh
+server/verify_bigquery_roles.sh
+server/bigquery_setup.md
+
+# Log files
+client/logs/*.log
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Virtual environment
+venv/
+env/
+ENV/
+
+# Environment variables
+# Note: .env files are now tracked - ensure no sensitive keys are committed
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Root level documentation files (except screencast_url.txt, final_instructions.txt, and retail_project_descriptions.txt)
+/idea.txt
+/lab8_reference.txt
+/notes.md
+/plan.md
+/presentation.md
+/rubric_checklist.md
+

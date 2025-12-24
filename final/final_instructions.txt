@@ -1,0 +1,84 @@
+1. Setup
+Within your course repository, create a directory "final" and create initial versions of the files required for the project. Commit and push to your remote repository.
+
+cd <path_to_repo>
+touch final/screencast_url.txt
+mkdir final/server
+touch final/server/Dockerfile final/server/server.py
+mkdir final/client
+touch final/client/client.py
+git add final
+git commit -m "initial commit for final"
+git push
+
+
+
+2. Application
+"Talk to your APIs"
+In this project, you will develop an MCP server that provides access to multiple APIs for an LLM agent. You will then develop an LLM client agent that can take natural language queries from the user and automatically perform the operations via tools the MCP server implements. The server must be deployed within a container deployed on Cloud Run. Projects will be graded on the level of functionality leveraged from the APIs and the ability of the client agent to compose calls from the APIs to answer a particular user query.
+
+API ideas for MCP servers to implement
+
+Guestbook API from prior lab
+Facebook, Instagram, TikTok, Twitter, Discord
+Reddit, Spotify, Yelp
+Google Maps, Places, Geocoding, and Locations
+Google Cloud APIs (Translate, Knowledge Graph, BigQuery public data)
+API collections at Rapid APIs and public-apis repository
+Project Ideas
+
+Shop recommendations and reviews
+Animal analysis and information
+Sports statistics analysis
+E-mail summaries
+News summaries
+Recipe instructions
+Hiking trail reviews
+Your development should be organized and incremental, with frequent commits into your git repository. You must also ensure any API keys do not show up in your source files. Configuring credentials for Cloud Run services can be done via environment variables either via Google Cloud's Secrets Manager or in the deployment step using the --set-env-vars flag.
+
+gcloud run deploy final --image gcr.io/... --set-env-vars APP_ID=e5c9382,API_KEY=cae2635...343
+
+
+
+3. Screencast
+Upon completing your project, via a narrated screencast of no longer than 15 minutes, you will show the following in the exact order specified.
+
+
+
+Checking out the application source code from your course repository.
+Describing steps one would need to take to run your project (e.g. setting up the Google Cloud services, service accounts, and credentials required, setting up the APIs you have integrated, and setting up any software packages needed).
+Building and deploying the container within your Google Cloud project. Pause the screencast to wait for deployment in order to shorten the length of the screencast.
+Demo the client agent by stepping through all of the functionality it supports
+Perform a source code walk-through using your repository via the MCECS Gitlab website that explains how each feature has been implemented.
+Walk-through the git commit history showing the diffs of each commit via the MCECS Gitlab website while describing the timeline of your incremental development process for the project. There must be at least one commit per individual MCP tool you have implemented. Ensure you click through the commits showing the Python code added for implementing individual features.
+To ensure you are the one completing the screencast, your screencast MUST initially include a video of you narrating the walkthrough. It is recommended for you to record your screencast as a recorded screen share on Zoom. Note that, when logged into Zoom, recordings are automatically captured and uploaded to PSU's Media Space and can be accessed after a short time by visiting "My Media" within Media Space.
+
+
+4. Submission
+Application
+All client and server code as well as the Dockerfile used to build the container implementing your MCP server should be pushed to your repository in the final directory.
+
+Screencast
+Upload your completed screencast on MediaSpace. Ensure that it is published as "Unlisted". To do so, visit MediaSpace and click on "My Media".
+
+Click on the screencast video that has been uploaded. Then, in the tabs below, select the "Publish" tab, click on "Unlisted", and then "Save".
+
+Then, update the file final/screencast_url.txt in your repository to contain the URL that your unlisted screencast on MediaSpace is located. Push the changes to your repository before the due date.
+
+
+5. Rubric
+We will be using your screencast and git repository to evaluate your project.
+
+Video of yourself within screencast
+
+Demo of the setup, building, and deployment of the server
+
+Demo of the client application
+
+Functionality of the application (e.g. APIs implemented, ability for an agent to compose tool calls to answer a user query, creativity)
+
+Code quality (clean with no unused code or variables, readable, modular, documented with Docstrings and comments, no hard-coded keys within source code)
+
+Walkthrough quality including Dockerfile, source code, and git commit diffs
+
+Instructions followed properly including presentation order of screencast, code submission in the specified repository files, and the length of the screencast

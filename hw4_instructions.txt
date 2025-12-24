@@ -1,0 +1,35 @@
+1. Setup
+Within your course repository, create a directory "hw4". Commit and push to your remote repository.
+
+cd <path_to_repo>
+mkdir hw4
+touch hw4/Dockerfile
+touch hw4/app.py
+touch hw4/url.txt
+git add hw4
+git commit -m "initial commit for hw4"
+git push
+
+2. Assignment
+For this homework, you will:
+
+Adapt your application from prior homeworks to use a Cloud Datastore backend. Note that you will need to use a different "Kind" in your model_datastore.py file so as to not conflict with the data from the Guestbook labs.
+Construct a Dockerfile for containerizing it
+Deploy the containerized version of your application on Cloud Run using the name "hw4" and leave it up for grading (i.e. gcloud run deploy hw4 --image ... )
+Place the URL for your Cloud Run deployment in url.txt. URL will have the form of https://hw4-....run.app.
+Throughout the development process, you will need to commit and push your code to your git repository.
+
+
+3. Rubric
+The following rubric will be used to evaluate your homework submission:
+
+Overall functionality
+
+Code documentation (such as Docstrings, comments)
+
+Code readability and modularity
+
+git repository activity (commits, commit messages, tags)
+
+Instructions followed properly including naming and submission of code
+

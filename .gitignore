@@ -1,0 +1,17 @@
+env/
+venv/
+*.pyc
+__pycache__/
+hw2/hw2_instructions.txt
+hw2/Model/__pycache__/
+#hw2/static/
+hw2/Model/model_pylist.py
+#hw2/Model/templates/layout.html
+hw2/__pycache__/
+hw2/entries.db
+
+# Final project - environment variables with API keys
+# .env files should NEVER be committed - they contain sensitive API keys
+*.env
+.env
+**/.env

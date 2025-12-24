@@ -1,0 +1,15 @@
+{% extends "layout.html" %}
+{% block content %}
+    <h2>Add A New Song</h2>
+    <form action="{{ url_for('sign') }}" method=post>
+        <p class="heading">Title: <input type=text name=title required></p>
+        <p class="heading">Genre: <input type=text name=genre required></p>
+        <p class="heading">Performer: <input type=text name=performer required></p>
+        <p class="heading">Writer: <input type=text name=writer required></p>
+        <p class="heading">Release Date: <input type=text name=release_date placeholder="YYYY-MM-DD" required></p>
+        <p class="heading">Rating: <input type=number name=rating min=1 max=10 required></p>
+        <p class="heading">Lyrics: <textarea rows=5 cols=50 name=lyrics required></textarea></p>
+        <p class="heading">URL: <input type=url name=url required></p>
+	    <p><input type=submit value="Add Song"></p>
+    </form>
+{% endblock %}
