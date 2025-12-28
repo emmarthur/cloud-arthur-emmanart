@@ -19,7 +19,9 @@
 ### 3. Navigate Through Each Section
 - Click on each section in the table of contents OR use Next/Back buttons
 - Navigate to each section using URL hash fragments (#0, #1, #2, #3)
-- Scroll through each section completely (use PageDown, End key, or scroll)
+- **IMPORTANT: Scroll through each section completely** (use PageDown, End key, or scroll)
+  - Scroll from top to bottom (Home key, then PageDown multiple times, then End key)
+  - This ensures all content and images are visible and can be captured
 - Take full-page screenshots of each section to capture all content
 
 ### 4. Extract Content from Screenshots
@@ -31,10 +33,13 @@
   - Any special formatting
 
 ### 5. Capture Images/Diagrams
-- Identify any diagrams or images in the sections
-- Take element-specific screenshots of diagrams
+- **CRITICAL: Scroll up and down through each section page to detect ALL images**
+- Identify any diagrams or images in the sections by thoroughly scrolling
+- Take full-page screenshots of each section to capture all images
+- Take element-specific screenshots of individual diagrams if needed
 - Save images to an `images/` folder within the lab folder
-- Use descriptive filenames (e.g., `netsim_diagram.png`)
+- Use descriptive filenames (e.g., `section2_marketplace_ui.png`, `section3_nmap_scan.png`)
+- **Place images in the markdown file exactly where they appear in the browser section**
 
 ### 6. Create Markdown File Structure
 - Create the markdown file with naming convention: `lab01_X.md` (where X is the lab number)
@@ -78,9 +83,14 @@
 ## Key Points to Remember
 
 - **Scroll through entire sections** - Content may extend beyond initial view
+  - Always scroll from top (Home) to bottom (End) of each section
+  - Use PageDown multiple times to ensure nothing is missed
+- **Capture ALL images** - Scroll up and down to detect all images within each section page
+- **Place images correctly** - Images must be placed in the markdown file exactly where they appear in the browser section
 - **Capture all subsections** - Some sections may have multiple parts
-- **Preserve exact order** - Content order matters
+- **Preserve exact order** - Content order matters, including image placement
 - **Include all questions** - Every question and instruction must be captured
 - **Save images separately** - Create images folder and reference properly
 - **Use proper markdown formatting** - Code blocks, headings, lists, etc.
+- **Update process documentation** - Whenever new requirements are added (like scrolling for images), update PROCESS_DOCUMENTATION.md
 
