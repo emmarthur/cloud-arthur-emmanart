@@ -4,7 +4,14 @@ Alpha Vantage API Tool: Retrieve financial market data for financial analysis.
 import os
 import json
 import requests
+import time
 from datetime import datetime
+import sys
+from pathlib import Path
+
+# Add parent directory to path for metrics import
+sys.path.insert(0, str(Path(__file__).parent.parent))
+from metrics import track_api_call
 
 # Logging setup
 LOG_DIR = os.path.join(os.path.dirname(__file__), "..", "logs")
@@ -52,19 +59,27 @@ def alpha_vantage(stock_symbol: str = None) -> str:
         # Make API call if key and symbol provided, else return general indicators
         if alpha_vantage_key and stock_symbol:
             try:
+                # Track API call with metrics
+                start_time = time.time()
                 # Call Alpha Vantage Global Quote API
                 url = f"https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol={stock_symbol}&apikey={alpha_vantage_key}"
                 response = requests.get(url, timeout=10)
                 response.raise_for_status()
                 quote_data = response.json()
+                response_time_ms = (time.time() - start_time) * 1000
                 
                 # Handle API response (quote, error, or rate limit)
+                success = False
+                error_msg = None
                 if "Global Quote" in quote_data:
                     data["quote"] = quote_data["Global Quote"]
+                    success = True
                 elif "Error Message" in quote_data:
                     data["error"] = quote_data["Error Message"]
+                    error_msg = quote_data["Error Message"]
                 elif "Note" in quote_data:
                     data["note"] = "API rate limit reached. Using simulated data."
+                    error_msg = "API rate limit reached"
                     data["market_indicators"] = {
                         "retail_sector_performance": "Stable",
                         "consumer_spending_index": "Moderate Growth",
@@ -72,13 +87,34 @@ def alpha_vantage(stock_symbol: str = None) -> str:
                     }
                 else:
                     data["raw_response"] = quote_data
+                    success = True
+                
+                # Track metrics
+                track_api_call(
+                    api_name="Alpha Vantage",
+                    tool_name="alpha_vantage_api",
+                    success=success,
+                    response_time_ms=response_time_ms,
+                    error_message=error_msg,
+                    parameters={"stock_symbol": stock_symbol}
+                )
             except requests.RequestException as e:
+                response_time_ms = (time.time() - start_time) * 1000
                 data["api_error"] = str(e)
                 data["market_indicators"] = {
                     "retail_sector_performance": "Stable",
                     "consumer_spending_index": "Moderate Growth",
                     "market_volatility": "Low to Medium"
                 }
+                # Track failed API call
+                track_api_call(
+                    api_name="Alpha Vantage",
+                    tool_name="alpha_vantage_api",
+                    success=False,
+                    response_time_ms=response_time_ms,
+                    error_message=str(e),
+                    parameters={"stock_symbol": stock_symbol}
+                )
         else:
             # No API key or symbol: return general market indicators
             data["market_indicators"] = {

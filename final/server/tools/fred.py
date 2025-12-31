@@ -4,7 +4,14 @@ FRED API Tool: Retrieve macroeconomic indicators for market intelligence and eco
 import os
 import json
 import requests
+import time
 from datetime import datetime
+import sys
+from pathlib import Path
+
+# Add parent directory to path for metrics import
+sys.path.insert(0, str(Path(__file__).parent.parent))
+from metrics import track_api_call
 
 # Logging setup
 LOG_DIR = os.path.join(os.path.dirname(__file__), "..", "logs")
@@ -54,13 +61,18 @@ def fred(series_id: str = None, industry: str = None) -> str:
         # Make API call if key and series_id provided, else return general indicators
         if fred_api_key and series_id:
             try:
+                # Track API call with metrics
+                start_time = time.time()
                 # Call FRED series observations API
                 url = f"https://api.stlouisfed.org/fred/series/observations?series_id={series_id}&api_key={fred_api_key}&file_type=json&limit=10&sort_order=desc"
                 response = requests.get(url, timeout=10)
                 response.raise_for_status()
                 fred_data = response.json()
+                response_time_ms = (time.time() - start_time) * 1000
                 
                 # Handle API response (observations, error, or raw)
+                success = False
+                error_msg = None
                 if "observations" in fred_data:
                     data["observations"] = fred_data["observations"]
                     data["series_info"] = {
@@ -68,12 +80,35 @@ def fred(series_id: str = None, industry: str = None) -> str:
                         "title": fred_data.get("title", ""),
                         "units": fred_data.get("units", "")
                     }
+                    success = True
                 elif "error_message" in fred_data:
                     data["error"] = fred_data["error_message"]
+                    error_msg = fred_data["error_message"]
                 else:
                     data["raw_response"] = fred_data
+                    success = True
+                
+                # Track metrics
+                track_api_call(
+                    api_name="FRED",
+                    tool_name="fred_api",
+                    success=success,
+                    response_time_ms=response_time_ms,
+                    error_message=error_msg,
+                    parameters={"series_id": series_id, "industry": industry}
+                )
             except requests.RequestException as e:
+                response_time_ms = (time.time() - start_time) * 1000
                 data["api_error"] = str(e)
+                # Track failed API call
+                track_api_call(
+                    api_name="FRED",
+                    tool_name="fred_api",
+                    success=False,
+                    response_time_ms=response_time_ms,
+                    error_message=str(e),
+                    parameters={"series_id": series_id, "industry": industry}
+                )
                 data["macroeconomic_indicators"] = {
                     "gdp_growth_rate": 2.5,
                     "gdp_growth_rate_unit": "percent",

@@ -4,10 +4,17 @@ Client agents provide SQL queries; this tool executes them and returns JSON resu
 """
 import json
 import os
+import time
 from datetime import datetime
 from google.cloud import bigquery
 from google.cloud.exceptions import GoogleCloudError
 from google.auth.exceptions import DefaultCredentialsError
+import sys
+from pathlib import Path
+
+# Add parent directory to path for metrics import
+sys.path.insert(0, str(Path(__file__).parent.parent))
+from metrics import track_api_call
 
 # Logging setup: create logs directory and define log file path
 LOG_DIR = os.path.join(os.path.dirname(__file__), "..", "logs")
@@ -71,8 +78,11 @@ def bigquery_query(query: str) -> str:
         
         # Execute query and process results
         try:
+            # Track API call with metrics
+            start_time = time.time()
             query_job = client.query(query)
             results = query_job.result()
+            response_time_ms = (time.time() - start_time) * 1000
             
             # Convert BigQuery Row objects to dictionaries for JSON serialization
             rows = []
@@ -100,8 +110,19 @@ def bigquery_query(query: str) -> str:
             result_json = json.dumps(data)
             _log_to_file(BIGQUERY_LOG_FILE, f"SUCCESS: Query executed, returned {len(rows)} rows")
             _log_to_file(BIGQUERY_LOG_FILE, f"Response: {result_json[:500]}...")
+            
+            # Track successful API call
+            track_api_call(
+                api_name="BigQuery",
+                tool_name="bigquery",
+                success=True,
+                response_time_ms=response_time_ms,
+                parameters={"query_length": len(query), "rows_returned": len(rows)}
+            )
+            
             return result_json
         except GoogleCloudError as e:
+            response_time_ms = (time.time() - start_time) * 1000 if 'start_time' in locals() else 0
             error_data = {
                 "error": True,
                 "error_message": f"BigQuery error: {str(e)}",
@@ -109,9 +130,21 @@ def bigquery_query(query: str) -> str:
                 "note": "Check that the query syntax is correct and the table/dataset exists in bigquery-public-data. Available table: census_bureau_international.midyear_population (columns: country_name, country_code, year, midyear_population)"
             }
             _log_to_file(BIGQUERY_LOG_FILE, f"ERROR: BigQuery error - {str(e)}")
+            
+            # Track failed API call
+            track_api_call(
+                api_name="BigQuery",
+                tool_name="bigquery",
+                success=False,
+                response_time_ms=response_time_ms,
+                error_message=str(e),
+                parameters={"query_length": len(query)}
+            )
+            
             return json.dumps(error_data)
         except Exception as e:
             # Handle unexpected errors during query execution
+            response_time_ms = (time.time() - start_time) * 1000 if 'start_time' in locals() else 0
             error_data = {
                 "error": True,
                 "error_message": f"Error executing query: {str(e)}",
@@ -119,6 +152,17 @@ def bigquery_query(query: str) -> str:
                 "error_type": type(e).__name__
             }
             _log_to_file(BIGQUERY_LOG_FILE, f"ERROR: Exception - {type(e).__name__}: {str(e)}")
+            
+            # Track failed API call
+            track_api_call(
+                api_name="BigQuery",
+                tool_name="bigquery",
+                success=False,
+                response_time_ms=response_time_ms,
+                error_message=str(e),
+                parameters={"query_length": len(query)}
+            )
+            
             return json.dumps(error_data)
     except DefaultCredentialsError as e:
         # Handle missing credentials (common in local testing, auto-resolved on Cloud Run)

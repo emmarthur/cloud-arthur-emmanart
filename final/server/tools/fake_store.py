@@ -4,7 +4,14 @@ Fake Store API Tool: Retrieve product data for product portfolio analysis and e-
 import requests
 import json
 import os
+import time
 from datetime import datetime
+import sys
+from pathlib import Path
+
+# Add parent directory to path for metrics import
+sys.path.insert(0, str(Path(__file__).parent.parent))
+from metrics import track_api_call
 
 # Logging setup
 LOG_DIR = os.path.join(os.path.dirname(__file__), "..", "logs")
@@ -43,6 +50,8 @@ def fake_store(category: str = None) -> str:
     try:
         _log_to_file(FAKE_STORE_LOG_FILE, f"Function called with category={category}")
         
+        # Track API call with metrics
+        start_time = time.time()
         # Call Fake Store API (filtered by category or all products)
         if category:
             # Filter by category
@@ -53,6 +62,16 @@ def fake_store(category: str = None) -> str:
         
         response.raise_for_status()
         products_data = response.json()
+        response_time_ms = (time.time() - start_time) * 1000
+        
+        # Track successful API call
+        track_api_call(
+            api_name="Fake Store",
+            tool_name="fake_store_api",
+            success=True,
+            response_time_ms=response_time_ms,
+            parameters={"category": category}
+        )
         
         # Calculate product analytics metrics
         total_products = len(products_data)
@@ -126,11 +145,23 @@ def fake_store(category: str = None) -> str:
         _log_to_file(FAKE_STORE_LOG_FILE, f"Response: {result_json[:500]}...")
         return result_json
     except requests.RequestException as e:
+        response_time_ms = (time.time() - start_time) * 1000 if 'start_time' in locals() else 0
         error_data = {
             "error": True,
             "error_message": f"Error fetching product data: {str(e)}",
             "category": category
         }
         _log_to_file(FAKE_STORE_LOG_FILE, f"ERROR: RequestException - {str(e)}")
+        
+        # Track failed API call
+        track_api_call(
+            api_name="Fake Store",
+            tool_name="fake_store_api",
+            success=False,
+            response_time_ms=response_time_ms,
+            error_message=str(e),
+            parameters={"category": category}
+        )
+        
         return json.dumps(error_data)
 

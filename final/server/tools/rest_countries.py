@@ -4,7 +4,14 @@ REST Countries API Tool: Retrieve country/region data for logistics and geograph
 import requests
 import json
 import os
+import time
 from datetime import datetime
+import sys
+from pathlib import Path
+
+# Add parent directory to path for metrics import
+sys.path.insert(0, str(Path(__file__).parent.parent))
+from metrics import track_api_call
 
 # Logging setup
 LOG_DIR = os.path.join(os.path.dirname(__file__), "..", "logs")
@@ -48,6 +55,8 @@ def rest_countries(country: str = None, region: str = None) -> str:
         
         _log_to_file(REST_COUNTRIES_LOG_FILE, f"Function called with country={country}, region={region}")
         
+        # Track API call with metrics
+        start_time = time.time()
         # Call REST Countries API based on filter parameters
         if country:
             # Search by country name
@@ -61,6 +70,16 @@ def rest_countries(country: str = None, region: str = None) -> str:
         
         response.raise_for_status()
         countries_data = response.json()
+        response_time_ms = (time.time() - start_time) * 1000
+        
+        # Track successful API call
+        track_api_call(
+            api_name="REST Countries",
+            tool_name="rest_countries_api",
+            success=True,
+            response_time_ms=response_time_ms,
+            parameters={"country": country, "region": region}
+        )
         
         # Normalize: wrap single dict result in list for consistent processing
         if isinstance(countries_data, dict):
@@ -126,6 +145,7 @@ def rest_countries(country: str = None, region: str = None) -> str:
         _log_to_file(REST_COUNTRIES_LOG_FILE, f"Response: {result_json[:500]}...")
         return result_json
     except requests.RequestException as e:
+        response_time_ms = (time.time() - start_time) * 1000 if 'start_time' in locals() else 0
         error_data = {
             "error": True,
             "error_message": f"Error fetching country data: {str(e)}",
@@ -133,5 +153,16 @@ def rest_countries(country: str = None, region: str = None) -> str:
             "region": region
         }
         _log_to_file(REST_COUNTRIES_LOG_FILE, f"ERROR: RequestException - {str(e)}")
+        
+        # Track failed API call
+        track_api_call(
+            api_name="REST Countries",
+            tool_name="rest_countries_api",
+            success=False,
+            response_time_ms=response_time_ms,
+            error_message=str(e),
+            parameters={"country": country, "region": region}
+        )
+        
         return json.dumps(error_data)
 

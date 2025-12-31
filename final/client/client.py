@@ -18,6 +18,7 @@ Coordinates specialized agents to analyze retail projects via MCP server on Clou
 import os
 import sys
 import signal
+import atexit
 
 # Windows compatibility fix: Add missing Unix signal constants that crewai expects
 # These signals don't exist on Windows, so we add dummy values to prevent AttributeError
@@ -71,6 +72,7 @@ from agents.customer_analytics_agent import create_customer_analytics_agent
 from agents.financial_agent import create_financial_agent
 from agents.market_intelligence_agent import create_market_intelligence_agent
 from agents.product_ecommerce_agent import create_product_ecommerce_agent
+from metrics import start_analysis_session, end_analysis_session, save_metrics_to_file
 
 load_dotenv()
 
@@ -91,6 +93,9 @@ def analyze_retail_project(project_description: str) -> str:
     Returns:
         Comprehensive analysis report combining insights from all specialist agents
     """
+    # Start tracking analysis session
+    session_id = start_analysis_session(project_description)
+    
     # Set project name for logging (truncate to 100 chars)
     from agents.tools import set_project_name
     project_name = project_description[:100] + "..." if len(project_description) > 100 else project_description
@@ -314,7 +319,18 @@ def analyze_retail_project(project_description: str) -> str:
     )
     
     # Execute crew: agents will autonomously plan, execute tools (MCP calls), and synthesize results
-    result = crew.kickoff()
+    try:
+        result = crew.kickoff()
+        analysis_success = True
+    except Exception as e:
+        analysis_success = False
+        result = f"Error during analysis: {str(e)}"
+    
+    # End tracking analysis session
+    end_analysis_session(session_id, analysis_success)
+    
+    # Save metrics to file
+    save_metrics_to_file()
     
     # Extract comprehensive report from CrewOutput object
     # CrewAI returns CrewOutput with multiple ways to access results
@@ -350,47 +366,125 @@ def analyze_retail_project(project_description: str) -> str:
         return str(result)
 
 
+def cleanup_and_exit(exit_code=0):
+    """Clean up resources and exit cleanly."""
+    import asyncio
+    import threading
+    
+    # Close any remaining asyncio event loops
+    try:
+        # Try to get the current event loop
+        try:
+            loop = asyncio.get_running_loop()
+            # Can't close a running loop, but we'll let it finish
+        except RuntimeError:
+            # No running loop, try to get and close any existing loop
+            try:
+                loop = asyncio.get_event_loop()
+                if not loop.is_closed():
+                    loop.close()
+            except:
+                pass
+    except:
+        pass
+    
+    # Force exit to bypass any hanging threads/processes
+    # This is necessary because CrewAI may leave background threads running
+    print("\n" + "=" * 70)
+    print("Exiting...")
+    print("=" * 70)
+    
+    # Use os._exit to force immediate termination, bypassing cleanup handlers
+    # This prevents hanging on CrewAI's background threads
+    os._exit(exit_code)
+
+
+def signal_handler(sig, frame):
+    """Handle Ctrl+C gracefully."""
+    print("\n\n" + "=" * 70)
+    print("Interrupted by user (Ctrl+C)")
+    print("=" * 70)
+    cleanup_and_exit(0)
+
+
+# Register signal handlers for clean exit
+if sys.platform != 'win32':
+    signal.signal(signal.SIGINT, signal_handler)
+    signal.signal(signal.SIGTERM, signal_handler)
+
+# Register cleanup function
+atexit.register(lambda: print("\n[Cleanup] Exiting..."))
+
+
 if __name__ == "__main__":
-    print("=" * 70)
-    print("Retail Project Analysis System")
-    print("=" * 70)
-    print("\nThis system uses CrewAI agents to analyze retail projects.")
-    print("Specialist agents gather data from the MCP server on Cloud Run.")
-    print("The orchestrator coordinates and synthesizes all analyses.\n")
-    
-    # Example usage
-    project_description = input("Enter your retail project description: ")
-    
-    if project_description.strip():
-        print("\n" + "=" * 70)
-        print("Analyzing project...")
-        print("=" * 70 + "\n")
-        
-        result = analyze_retail_project(project_description)
-        
-        print("\n" + "=" * 70)
-        print("Analysis Complete")
+    try:
         print("=" * 70)
+        print("Retail Project Analysis System")
+        print("=" * 70)
+        print("\nThis system uses CrewAI agents to analyze retail projects.")
+        print("Specialist agents gather data from the MCP server on Cloud Run.")
+        print("The orchestrator coordinates and synthesizes all analyses.")
+        print("\nPress Ctrl+C at any time to exit.\n")
         
-        # Extract and print the full report
-        if hasattr(result, 'raw'):
-            print(result.raw)
-        elif hasattr(result, 'tasks_output') and result.tasks_output:
-            # Get the orchestrator task output (last task)
-            orchestrator_output = result.tasks_output[-1]
-            if hasattr(orchestrator_output, 'raw'):
-                print(orchestrator_output.raw)
-            elif hasattr(orchestrator_output, 'output'):
-                print(orchestrator_output.output)
-            else:
-                print(str(orchestrator_output))
-        else:
-            # Print the string representation
-            result_str = str(result)
-            print(result_str)
+        # Example usage
+        try:
+            project_description = input("Enter your retail project description: ")
+        except (KeyboardInterrupt, EOFError):
+            print("\n\nNo input provided. Exiting.")
+            cleanup_and_exit(0)
+        
+        if project_description.strip():
+            print("\n" + "=" * 70)
+            print("Analyzing project...")
+            print("=" * 70 + "\n")
             
-            # If it's too short, try to get more details
-            if len(result_str) < 500:
-                print("\n[NOTE] Report seems truncated. Full details may be in verbose output above.")
-    else:
-        print("No project description provided. Exiting.")
+            result = analyze_retail_project(project_description)
+            
+            print("\n" + "=" * 70)
+            print("Analysis Complete")
+            print("=" * 70)
+            
+            # Extract and print the full report
+            if hasattr(result, 'raw'):
+                print(result.raw)
+            elif hasattr(result, 'tasks_output') and result.tasks_output:
+                # Get the orchestrator task output (last task)
+                orchestrator_output = result.tasks_output[-1]
+                if hasattr(orchestrator_output, 'raw'):
+                    print(orchestrator_output.raw)
+                elif hasattr(orchestrator_output, 'output'):
+                    print(orchestrator_output.output)
+                else:
+                    print(str(orchestrator_output))
+            else:
+                # Print the string representation
+                result_str = str(result)
+                print(result_str)
+                
+                # If it's too short, try to get more details
+                if len(result_str) < 500:
+                    print("\n[NOTE] Report seems truncated. Full details may be in verbose output above.")
+            
+            print("\n" + "=" * 70)
+            print("Analysis finished. Exiting...")
+            print("=" * 70)
+        else:
+            print("No project description provided. Exiting.")
+        
+        # Force immediate exit to prevent hanging on CrewAI threads
+        # Use os._exit instead of cleanup_and_exit to bypass any hanging threads
+        print("\n" + "=" * 70)
+        print("Exiting...")
+        print("=" * 70)
+        os._exit(0)
+        
+    except KeyboardInterrupt:
+        print("\n\n" + "=" * 70)
+        print("Interrupted by user (Ctrl+C)")
+        print("=" * 70)
+        os._exit(0)
+    except Exception as e:
+        print(f"\n\nError: {e}")
+        import traceback
+        traceback.print_exc()
+        os._exit(1)

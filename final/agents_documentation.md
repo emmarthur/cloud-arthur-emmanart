@@ -140,3 +140,239 @@ The system will automatically:
 1. Coordinate all relevant specialist agents
 2. Have each agent gather necessary data using MCP tools
 3. Synthesize all analyses into a comprehensive report
+
+---
+
+## Metrics Tracking System
+
+The Retail Intelligence Platform includes a comprehensive metrics tracking system that monitors API calls, tool usage, agent activity, and performance metrics across both the client and server components.
+
+### Overview
+
+The metrics system tracks:
+- **API Calls:** All external API calls made by server tools (Alpha Vantage, FRED, REST Countries, Fake Store, BigQuery)
+- **Tool Usage:** Frequency and success rates of each MCP tool
+- **Agent Activity:** Which agents use which tools and how often
+- **Analysis Sessions:** Complete analysis sessions with duration and success tracking
+- **Performance Metrics:** Response times, success rates, error rates
+- **MCP Server Calls:** Client-to-server communication metrics
+
+### Metrics Components
+
+#### Server-Side Metrics (`server/metrics.py`)
+
+Tracks metrics for the MCP server running on Cloud Run:
+
+**Tracked Metrics:**
+- Total API calls by external service
+- Success/failure rates per API
+- Response times (average, min, max) per API
+- Tool call counts per MCP tool
+- Error logs with timestamps and details
+- API call parameters and results
+
+**Metrics Storage:**
+- Log file: `server/logs/server_metrics.log`
+- JSON file: `server/logs/server_metrics.json` (auto-saved every 10 calls)
+
+**Key Functions:**
+- `track_api_call()`: Records each external API call with timing and success status
+- `get_metrics_summary()`: Returns summary statistics
+- `get_all_metrics()`: Returns complete metrics data
+- `save_metrics_to_file()`: Persists metrics to JSON file
+
+#### Client-Side Metrics (`client/metrics.py`)
+
+Tracks metrics for the client application and agent activity:
+
+**Tracked Metrics:**
+- Analysis sessions (start time, duration, success status)
+- Tool calls by agent and tool name
+- Agent activity summaries
+- MCP server call metrics (response times, success rates)
+- Tool usage frequency
+- Project descriptions and session details
+
+**Metrics Storage:**
+- Log file: `client/logs/client_metrics.log`
+- JSON file: `client/logs/client_metrics.json` (auto-saved after each analysis)
+
+**Key Functions:**
+- `start_analysis_session()`: Begins tracking a new analysis session
+- `end_analysis_session()`: Completes session tracking with duration
+- `track_tool_call()`: Records tool usage by agents
+- `track_mcp_call()`: Records MCP server communication metrics
+- `get_metrics_summary()`: Returns summary statistics
+- `get_all_metrics()`: Returns complete metrics data
+
+### Integration Points
+
+**Server Tools Integration:**
+All server tools (`server/tools/*.py`) automatically track:
+- API call start/end times
+- Success/failure status
+- Response times
+- Error messages
+- Parameters used
+
+**Client Integration:**
+- `client/client.py`: Tracks analysis sessions
+- `client/mcp_client.py`: Tracks MCP server calls
+- `client/agents/tools.py`: Tracks tool usage by agents
+
+### Viewing Metrics
+
+#### Command-Line View
+
+Use the metrics viewer script:
+
+```bash
+cd client
+python view_metrics.py
+```
+
+This displays:
+- Summary statistics (total calls, success rates, etc.)
+- Tool usage breakdown
+- API usage statistics
+- Average response times
+- Agent activity summaries
+- Recent analysis sessions
+- Recent errors
+
+#### Programmatic Access
+
+Access metrics programmatically:
+
+```python
+# Client metrics
+from client.metrics import get_metrics_summary, get_all_metrics
+
+summary = get_metrics_summary()
+all_metrics = get_all_metrics()
+
+# Server metrics (if running locally)
+from server.metrics import get_metrics_summary, get_all_metrics
+
+server_summary = get_metrics_summary()
+server_all = get_all_metrics()
+```
+
+### Metrics Data Structure
+
+#### Client Metrics Summary
+
+```json
+{
+  "summary": {
+    "start_time": "2024-01-01T00:00:00",
+    "current_time": "2024-01-01T12:00:00",
+    "total_analyses": 10,
+    "total_tool_calls": 50,
+    "successful_tool_calls": 48,
+    "failed_tool_calls": 2,
+    "tool_call_success_rate_percent": 96.0,
+    "total_mcp_calls": 50,
+    "average_mcp_response_time_ms": 1250.5,
+    "average_analysis_duration_seconds": 45.2
+  },
+  "tool_usage": {
+    "BigQuery Tool": 15,
+    "REST Countries Tool": 10,
+    "Alpha Vantage Tool": 8,
+    "FRED Tool": 12,
+    "Fake Store Tool": 5
+  },
+  "agent_activity_summary": {
+    "Operations & Supply Chain Analyst": 12,
+    "Customer Analytics & Marketing Specialist": 10,
+    "Financial & Sales Performance Analyst": 8,
+    "Market Intelligence & Research Analyst": 10,
+    "Product & E-commerce Specialist": 10
+  }
+}
+```
+
+#### Server Metrics Summary
+
+```json
+{
+  "summary": {
+    "start_time": "2024-01-01T00:00:00",
+    "current_time": "2024-01-01T12:00:00",
+    "total_api_calls": 50,
+    "successful_calls": 48,
+    "failed_calls": 2,
+    "success_rate_percent": 96.0
+  },
+  "tool_usage": {
+    "bigquery": 15,
+    "rest_countries_api": 10,
+    "alpha_vantage_api": 8,
+    "fred_api": 12,
+    "fake_store_api": 5
+  },
+  "api_usage": {
+    "BigQuery": 15,
+    "REST Countries": 10,
+    "Alpha Vantage": 8,
+    "FRED": 12,
+    "Fake Store": 5
+  },
+  "average_response_times": {
+    "BigQuery": {
+      "avg_ms": 1250.5,
+      "min_ms": 800.0,
+      "max_ms": 2000.0,
+      "count": 15
+    }
+  }
+}
+```
+
+### Use Cases
+
+**Performance Monitoring:**
+- Track API response times to identify slow services
+- Monitor success rates to detect API issues
+- Analyze tool usage patterns
+
+**Cost Management:**
+- Count API calls to estimate costs
+- Identify most-used APIs for optimization
+- Track usage trends over time
+
+**Debugging:**
+- Review error logs with timestamps
+- Trace tool call sequences
+- Identify problematic API calls
+
+**Analytics:**
+- Understand agent behavior patterns
+- Analyze tool selection by agents
+- Measure analysis session durations
+
+### Best Practices
+
+1. **Regular Review:** Check metrics regularly to monitor system health
+2. **Error Analysis:** Review error logs to identify and fix issues
+3. **Performance Optimization:** Use response time data to optimize slow operations
+4. **Cost Tracking:** Monitor API call counts to manage costs
+5. **Session Analysis:** Review analysis sessions to understand usage patterns
+
+### Metrics Retention
+
+- Metrics are stored in JSON files for persistence
+- Log files grow over time (consider rotation for production)
+- Metrics are automatically saved:
+  - Server: Every 10 API calls
+  - Client: After each analysis session
+
+### Cloud Run Considerations
+
+On Cloud Run, server metrics are:
+- Logged to stdout/stderr (captured by Cloud Logging)
+- Saved to JSON file (if filesystem is writable)
+- Accessible via Cloud Logging dashboard
+
+Client metrics are always stored locally in the `client/logs/` directory.

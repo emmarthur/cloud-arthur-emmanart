@@ -15,11 +15,13 @@ Provides synchronous wrapper functions for CrewAI agents to call MCP server tool
 All agents have access to all tools.
 """
 import asyncio
+import time
 from mcp import ClientSession
 from mcp.client.streamable_http import streamablehttp_client
 from typing import Optional
 import os
 from dotenv import load_dotenv
+from metrics import track_mcp_call
 
 load_dotenv()
 
@@ -43,6 +45,10 @@ async def call_mcp_tool(tool_name: str, **kwargs) -> str:
     Returns:
         Tool result as JSON string
     """
+    start_time = time.time()
+    success = False
+    error_message = None
+    
     try:
         # Use streamablehttp_client for HTTP transport (Lab 8: streamablehttp_client pattern)
         # Creates connection to remote MCP server over HTTP
@@ -57,12 +63,19 @@ async def call_mcp_tool(tool_name: str, **kwargs) -> str:
                 result = await session.call_tool(tool_name, kwargs)
                 if result.content:
                     text_content = result.content[0].text if hasattr(result.content[0], 'text') else str(result.content[0])
+                    success = True
                     return text_content
                 else:
+                    success = True
                     return str(result)
                     
     except Exception as e:
+        error_message = str(e)
         return f"Error calling {tool_name}: {str(e)}"
+    finally:
+        # Track MCP call metrics
+        response_time_ms = (time.time() - start_time) * 1000
+        track_mcp_call(tool_name, response_time_ms, success, error_message)
 
 
 def call_mcp_tool_sync(tool_name: str, **kwargs) -> str:

@@ -18,6 +18,7 @@ from crewai.tools import tool
 import sys
 import json
 import os
+import time
 from datetime import datetime
 from pathlib import Path
 # Add parent directory to path for imports
@@ -26,6 +27,7 @@ from mcp_client import (
     bigquery_tool, rest_countries_tool, alpha_vantage_tool, 
     fred_tool, fake_store_tool
 )
+from metrics import track_tool_call
 
 # Logging setup: create logs directory and define log file paths
 LOG_DIR = os.path.join(os.path.dirname(__file__), "..", "logs")
@@ -172,9 +174,51 @@ def bigquery_tool_wrapper(query: str, agent_name: str = "Unknown Agent") -> str:
     Returns:
         JSON string with query results
     """
-    result = bigquery_tool(query)
-    _log_tool_data("BigQuery Tool", {"query": query[:200] + "..." if len(query) > 200 else query}, result, BIGQUERY_LOG_FILE, agent_name)
-    return result
+    start_time = time.time()
+    success = True
+    error_message = None
+    
+    try:
+        result = bigquery_tool(query)
+        # Check if result contains error
+        try:
+            result_json = json.loads(result)
+            if isinstance(result_json, dict) and result_json.get("error"):
+                success = False
+                error_message = result_json.get("error_message", "Unknown error")
+        except:
+            pass  # Not JSON, assume success
+        
+        response_time_ms = (time.time() - start_time) * 1000
+        
+        # Track tool call metrics
+        track_tool_call(
+            tool_name="BigQuery Tool",
+            agent_name=agent_name,
+            parameters={"query_length": len(query)},
+            success=success,
+            response_time_ms=response_time_ms,
+            error_message=error_message
+        )
+        
+        _log_tool_data("BigQuery Tool", {"query": query[:200] + "..." if len(query) > 200 else query}, result, BIGQUERY_LOG_FILE, agent_name)
+        return result
+    except Exception as e:
+        response_time_ms = (time.time() - start_time) * 1000
+        error_message = str(e)
+        success = False
+        
+        # Track failed tool call
+        track_tool_call(
+            tool_name="BigQuery Tool",
+            agent_name=agent_name,
+            parameters={"query_length": len(query)},
+            success=False,
+            response_time_ms=response_time_ms,
+            error_message=error_message
+        )
+        
+        raise
 
 # Track tool call attempts to prevent infinite recursion
 _rest_countries_call_count = {}
@@ -225,6 +269,10 @@ def rest_countries_tool_wrapper(country: str = "", region: str = "", agent_name:
     country_param = country if country and country.strip() else None
     region_param = region if region and region.strip() else None
     
+    start_time = time.time()
+    success = True
+    error_message = None
+    
     try:
         # Always pass both parameters explicitly to prevent Pydantic validation errors
         result = rest_countries_tool(country_param, region_param)
@@ -247,6 +295,8 @@ def rest_countries_tool_wrapper(country: str = "", region: str = "", agent_name:
                             "original_error": result_dict.get("error_message", str(result_dict))
                         }
                         result = json.dumps(error_response)
+                        success = False
+                        error_message = result_dict.get("error_message", "Validation error")
                 except:
                     # If result is not JSON but contains error keywords, create error response
                     error_response = {
@@ -255,13 +305,38 @@ def rest_countries_tool_wrapper(country: str = "", region: str = "", agent_name:
                         "suggestion": "When calling REST Countries Tool, always provide both 'country' and 'region' parameters (use empty string '' if not needed)"
                     }
                     result = json.dumps(error_response)
+                    success = False
+                    error_message = "Validation error"
         except:
             pass  # If error detection fails, continue with original result
+        
+        # Check for errors in result
+        try:
+            result_json = json.loads(result)
+            if isinstance(result_json, dict) and result_json.get("error"):
+                success = False
+                error_message = result_json.get("error_message", "Unknown error")
+        except:
+            pass
+        
+        response_time_ms = (time.time() - start_time) * 1000
+        
+        # Track tool call metrics
+        track_tool_call(
+            tool_name="REST Countries Tool",
+            agent_name=agent_name,
+            parameters={"country": country, "region": region},
+            success=success,
+            response_time_ms=response_time_ms,
+            error_message=error_message
+        )
         
         _log_tool_data("REST Countries Tool", {"country": country, "region": region}, result, REST_COUNTRIES_LOG_FILE, agent_name)
         return result
     except Exception as e:
         # Catch any unexpected errors and return a clear error message
+        response_time_ms = (time.time() - start_time) * 1000 if 'start_time' in locals() else 0
+        error_message = str(e)
         error_response = {
             "error": True,
             "error_message": f"Error calling REST Countries Tool: {str(e)}",
@@ -269,6 +344,17 @@ def rest_countries_tool_wrapper(country: str = "", region: str = "", agent_name:
         }
         import json
         error_result = json.dumps(error_response)
+        
+        # Track failed tool call
+        track_tool_call(
+            tool_name="REST Countries Tool",
+            agent_name=agent_name,
+            parameters={"country": country, "region": region},
+            success=False,
+            response_time_ms=response_time_ms,
+            error_message=error_message
+        )
+        
         _log_tool_data("REST Countries Tool", {"country": country, "region": region}, error_result, REST_COUNTRIES_LOG_FILE, agent_name)
         return error_result
 
@@ -297,10 +383,53 @@ def alpha_vantage_tool_wrapper(stock_symbol: str = "", agent_name: str = "Unknow
     Returns:
         JSON string with financial data
     """
-    symbol_param = stock_symbol if stock_symbol and stock_symbol.strip() else None
-    result = alpha_vantage_tool(symbol_param)
-    _log_tool_data("Alpha Vantage Tool", {"stock_symbol": stock_symbol}, result, ALPHA_VANTAGE_LOG_FILE, agent_name)
-    return result
+    start_time = time.time()
+    success = True
+    error_message = None
+    
+    try:
+        symbol_param = stock_symbol if stock_symbol and stock_symbol.strip() else None
+        result = alpha_vantage_tool(symbol_param)
+        
+        # Check for errors
+        try:
+            result_json = json.loads(result)
+            if isinstance(result_json, dict) and result_json.get("error"):
+                success = False
+                error_message = result_json.get("error_message", "Unknown error")
+        except:
+            pass
+        
+        response_time_ms = (time.time() - start_time) * 1000
+        
+        # Track tool call metrics
+        track_tool_call(
+            tool_name="Alpha Vantage Tool",
+            agent_name=agent_name,
+            parameters={"stock_symbol": stock_symbol},
+            success=success,
+            response_time_ms=response_time_ms,
+            error_message=error_message
+        )
+        
+        _log_tool_data("Alpha Vantage Tool", {"stock_symbol": stock_symbol}, result, ALPHA_VANTAGE_LOG_FILE, agent_name)
+        return result
+    except Exception as e:
+        response_time_ms = (time.time() - start_time) * 1000
+        error_message = str(e)
+        success = False
+        
+        # Track failed tool call
+        track_tool_call(
+            tool_name="Alpha Vantage Tool",
+            agent_name=agent_name,
+            parameters={"stock_symbol": stock_symbol},
+            success=False,
+            response_time_ms=response_time_ms,
+            error_message=error_message
+        )
+        
+        raise
 
 @tool("FRED Tool")
 def fred_tool_wrapper(series_id: str = "", industry: str = "", agent_name: str = "Unknown Agent") -> str:
@@ -324,11 +453,54 @@ def fred_tool_wrapper(series_id: str = "", industry: str = "", agent_name: str =
     Returns:
         JSON string with economic data
     """
-    series_param = series_id if series_id and series_id.strip() else None
-    industry_param = industry if industry and industry.strip() else None
-    result = fred_tool(series_param, industry_param)
-    _log_tool_data("FRED Tool", {"series_id": series_id, "industry": industry}, result, FRED_LOG_FILE, agent_name)
-    return result
+    start_time = time.time()
+    success = True
+    error_message = None
+    
+    try:
+        series_param = series_id if series_id and series_id.strip() else None
+        industry_param = industry if industry and industry.strip() else None
+        result = fred_tool(series_param, industry_param)
+        
+        # Check for errors
+        try:
+            result_json = json.loads(result)
+            if isinstance(result_json, dict) and result_json.get("error"):
+                success = False
+                error_message = result_json.get("error_message", "Unknown error")
+        except:
+            pass
+        
+        response_time_ms = (time.time() - start_time) * 1000
+        
+        # Track tool call metrics
+        track_tool_call(
+            tool_name="FRED Tool",
+            agent_name=agent_name,
+            parameters={"series_id": series_id, "industry": industry},
+            success=success,
+            response_time_ms=response_time_ms,
+            error_message=error_message
+        )
+        
+        _log_tool_data("FRED Tool", {"series_id": series_id, "industry": industry}, result, FRED_LOG_FILE, agent_name)
+        return result
+    except Exception as e:
+        response_time_ms = (time.time() - start_time) * 1000
+        error_message = str(e)
+        success = False
+        
+        # Track failed tool call
+        track_tool_call(
+            tool_name="FRED Tool",
+            agent_name=agent_name,
+            parameters={"series_id": series_id, "industry": industry},
+            success=False,
+            response_time_ms=response_time_ms,
+            error_message=error_message
+        )
+        
+        raise
 
 @tool("Fake Store Tool")
 def fake_store_tool_wrapper(category: str = "", agent_name: str = "Unknown Agent") -> str:
@@ -349,10 +521,53 @@ def fake_store_tool_wrapper(category: str = "", agent_name: str = "Unknown Agent
     Returns:
         JSON string with product data
     """
-    category_param = category if category and category.strip() else None
-    result = fake_store_tool(category_param)
-    _log_tool_data("Fake Store Tool", {"category": category}, result, FAKE_STORE_LOG_FILE, agent_name)
-    return result
+    start_time = time.time()
+    success = True
+    error_message = None
+    
+    try:
+        category_param = category if category and category.strip() else None
+        result = fake_store_tool(category_param)
+        
+        # Check for errors
+        try:
+            result_json = json.loads(result)
+            if isinstance(result_json, dict) and result_json.get("error"):
+                success = False
+                error_message = result_json.get("error_message", "Unknown error")
+        except:
+            pass
+        
+        response_time_ms = (time.time() - start_time) * 1000
+        
+        # Track tool call metrics
+        track_tool_call(
+            tool_name="Fake Store Tool",
+            agent_name=agent_name,
+            parameters={"category": category},
+            success=success,
+            response_time_ms=response_time_ms,
+            error_message=error_message
+        )
+        
+        _log_tool_data("Fake Store Tool", {"category": category}, result, FAKE_STORE_LOG_FILE, agent_name)
+        return result
+    except Exception as e:
+        response_time_ms = (time.time() - start_time) * 1000
+        error_message = str(e)
+        success = False
+        
+        # Track failed tool call
+        track_tool_call(
+            tool_name="Fake Store Tool",
+            agent_name=agent_name,
+            parameters={"category": category},
+            success=False,
+            response_time_ms=response_time_ms,
+            error_message=error_message
+        )
+        
+        raise
 
 # Export all tools as a list for easy import
 ALL_TOOLS = [
